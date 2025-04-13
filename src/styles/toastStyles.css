@@ -1,0 +1,35 @@
+/* src/styles/toastStyles.css */
+.Toastify__toast {
+    font-family: 'Roboto', sans-serif;
+    border-radius: 8px;
+    padding: 12px 20px;
+  }
+  
+  .Toastify__toast--success {
+    background-color: #4caf50;
+    color: white;
+  }
+  .Toastify__toast-body {
+    margin: 0;
+    padding: 0;
+  }
+  .Toastify__toast--error {
+    background-color: #f44336;
+    color: white;
+  }
+  
+.custom-toast {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .toast-title {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  
+  .toast-text {
+    font-size: 14px;
+  }
