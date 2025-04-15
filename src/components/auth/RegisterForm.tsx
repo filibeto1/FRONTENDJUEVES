@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -12,13 +12,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Alert 
+  Alert
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { availableRoles } from '../../utils/roles';
 import { api } from '../../api/authAPI';
-import Grid from '@mui/material/Grid';
-// Esquema de validación
+
+// Eliminamos la importación de Grid y usamos Box en su lugar
+
 const schema = yup.object().shape({
   username: yup.string().required('Nombre de usuario es requerido'),
   correo: yup.string().email('Email inválido').required('Email es requerido'),
@@ -42,12 +43,15 @@ interface RegisterFormData {
   confirmPassword: string;
   rol: string;
 }
+
 interface ApiResponse {
   codigo: number;
   mensaje: string;
   data?: any;
 }
+
 const RegisterForm: React.FC = () => {
+  const formRef = useRef<HTMLFormElement>(null);
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: yupResolver(schema),
     defaultValues: {
@@ -64,10 +68,17 @@ const RegisterForm: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    return () => {
+      setLoading(false);
+    };
+  }, []);
+
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setLoading(true);
       setError('');
+      setSuccess(false);
       
       const requestData = {
         username: data.username,
@@ -76,7 +87,6 @@ const RegisterForm: React.FC = () => {
         rol: data.rol,
         estatus: true,
         doblePasoActivado: false,
-        // La firma se añadirá automáticamente por el interceptor
       };
   
       console.log('Datos a enviar:', JSON.stringify(requestData, null, 2));
@@ -103,8 +113,20 @@ const RegisterForm: React.FC = () => {
   };
 
   return (
-    <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1, maxWidth: 500, mx: 'auto' }}>
-      <Typography variant="h4" gutterBottom align="center">
+    <Box 
+      component="form" 
+      ref={formRef}
+      onSubmit={handleSubmit(onSubmit)} 
+      sx={{ 
+        mt: 1, 
+        maxWidth: 500, 
+        mx: 'auto',
+        p: 3,
+        boxShadow: 3,
+        borderRadius: 2
+      }}
+    >
+      <Typography variant="h4" gutterBottom align="center" sx={{ mb: 3 }}>
         Registro de Usuario
       </Typography>
       
@@ -120,78 +142,92 @@ const RegisterForm: React.FC = () => {
         </Alert>
       )}
       
-      <TextField
-        margin="normal"
-        fullWidth
-        label="Nombre de usuario"
-        autoComplete="username"
-        {...register('username')}
-        error={!!errors.username}
-        helperText={errors.username?.message}
-      />
-      
-      <TextField
-        margin="normal"
-        fullWidth
-        label="Correo electrónico"
-        autoComplete="email"
-        {...register('correo')}
-        error={!!errors.correo}
-        helperText={errors.correo?.message}
-      />
-      
-      <TextField
-        margin="normal"
-        fullWidth
-        label="Contraseña"
-        type="password"
-        autoComplete="new-password"
-        {...register('password')}
-        error={!!errors.password}
-        helperText={errors.password?.message}
-      />
-      
-      <TextField
-        margin="normal"
-        fullWidth
-        label="Confirmar Contraseña"
-        type="password"
-        autoComplete="new-password"
-        {...register('confirmPassword')}
-        error={!!errors.confirmPassword}
-        helperText={errors.confirmPassword?.message}
-      />
-      
-      <FormControl fullWidth margin="normal">
-        <InputLabel>Rol</InputLabel>
-        <Select
-          label="Rol"
-          {...register('rol')}
-          error={!!errors.rol}
-          defaultValue={availableRoles[0]?.value || ''}
+      {/* Reemplazamos Grid con Box y usamos flexbox */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Campo de nombre de usuario */}
+        <TextField
+          margin="normal"
+          fullWidth
+          label="Nombre de usuario"
+          autoComplete="username"
+          {...register('username')}
+          error={!!errors.username}
+          helperText={errors.username?.message}
+          disabled={loading}
+        />
+        
+        {/* Campo de correo electrónico */}
+        <TextField
+          margin="normal"
+          fullWidth
+          label="Correo electrónico"
+          autoComplete="email"
+          {...register('correo')}
+          error={!!errors.correo}
+          helperText={errors.correo?.message}
+          disabled={loading}
+        />
+        
+        {/* Campos de contraseña en fila para pantallas grandes */}
+        <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+          <TextField
+            margin="normal"
+            fullWidth
+            label="Contraseña"
+            type="password"
+            autoComplete="new-password"
+            {...register('password')}
+            error={!!errors.password}
+            helperText={errors.password?.message}
+            disabled={loading}
+          />
+          
+          <TextField
+            margin="normal"
+            fullWidth
+            label="Confirmar Contraseña"
+            type="password"
+            autoComplete="new-password"
+            {...register('confirmPassword')}
+            error={!!errors.confirmPassword}
+            helperText={errors.confirmPassword?.message}
+            disabled={loading}
+          />
+        </Box>
+        
+        {/* Campo de selección de rol */}
+        <FormControl fullWidth margin="normal" error={!!errors.rol}>
+          <InputLabel>Rol</InputLabel>
+          <Select
+            label="Rol"
+            {...register('rol')}
+            defaultValue={availableRoles[0]?.value || ''}
+            disabled={loading}
+          >
+            {availableRoles.map((role) => (
+              <MenuItem key={role.value} value={role.value}>
+                {role.label}
+              </MenuItem>
+            ))}
+          </Select>
+          {errors.rol && (
+            <Typography variant="caption" color="error">
+              {errors.rol.message}
+            </Typography>
+          )}
+        </FormControl>
+        
+        {/* Botón de submit */}
+        <Button
+          type="submit"
+          fullWidth
+          variant="contained"
+          sx={{ mt: 3, mb: 2, py: 1.5 }}
+          disabled={loading}
         >
-          {availableRoles.map((role) => (
-            <MenuItem key={role.value} value={role.value}>
-              {role.label}
-            </MenuItem>
-          ))}
-        </Select>
-        {errors.rol && (
-          <Typography variant="caption" color="error">
-            {errors.rol.message}
-          </Typography>
-        )}
-      </FormControl>
-      
-      <Button
-        type="submit"
-        fullWidth
-        variant="contained"
-        sx={{ mt: 3, mb: 2 }}
-        disabled={loading}
-      >
-        {loading ? <CircularProgress size={24} /> : 'Registrarse'}
-      </Button>
+          {loading ? <CircularProgress size={24} /> : 'Registrarse'}
+        </Button>
+      </Box>
     </Box>
   );
 };

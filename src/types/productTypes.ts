@@ -1,6 +1,6 @@
-// src/types/productTypes.ts
+// Interfaz principal para productos
 export interface Producto {
-  id_product?: number;
+  id_product: number;
   nombre: string;
   descripcion?: string;
   precio: number;
@@ -9,23 +9,37 @@ export interface Producto {
   fechaCreacion?: string;
 }
 
-export interface ProductoRequest {
+// Interfaces para props de componentes
+export interface ProductFormProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmitSuccess?: () => void;
+  product: Producto | null;
+}
+
+// Interfaces para requests
+export interface ProductoBaseRequest {
   nombre: string;
-  precio: number;
-  cantidad: number;
-  descripcion?: string;
-  categoria?: string;
   firma: string;
 }
 
+export interface ProductoRequest {
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  cantidad: number;
+  categoria?: string;
+  firma: string; // Añadir este campo
+
+}
 export interface ProductoUpdateRequest {
   nombreOriginal: string;
-  nuevoNombre?: string;
+  nuevoNombre: string;
   descripcion?: string;
-  precio?: number;
-  cantidad?: number;
+  precio: number;
+  cantidad: number;
   categoria?: string;
-  firma: string;
+  firma: string; // Añadir este campo
 }
 
 export interface ProductoDeleteRequest {
@@ -35,12 +49,11 @@ export interface ProductoDeleteRequest {
 
 export interface ProductoListRequest {
   nombre?: string;
-  Fecha_creacion?: string;
   pagina: number;
   tamañoPagina: number;
-  firma: string;
 }
 
+// Interfaces para responses
 export interface ProductoResponse {
   codigo: number;
   mensaje: string;
@@ -51,11 +64,21 @@ export interface ProductoResponse {
   categoria?: string;
   fechaCreacion?: string;
 }
-
 export interface ProductoListResponse {
   codigo: number;
   mensaje: string;
-  totalPaginas?: number;
-  totalElementos?: number;
-  productos?: Producto[];
+  productos: Producto[];
+  totalPaginas: number;
+  totalElementos: number;
 }
+
+
+export interface SignatureParams {
+  nombre: string;
+  descripcion?: string;
+  precio?: number;
+  cantidad?: number;
+  categoria?: string;
+}
+
+// Elimina el export type al final y usa solo las exportaciones de interface

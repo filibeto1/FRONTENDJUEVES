@@ -1,195 +1,103 @@
-// src/components/auth/LoginForm.tsx
 import React, { useState } from 'react';
-import { 
-  TextField, 
-  Button, 
-  Box, 
-  Typography, 
-  Link,
-  Paper,
-  Divider,
-  IconButton,
-  InputAdornment,
-  Stack,
-  CircularProgress,
-  Alert
-} from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { TextField, Button, Box, Typography, CircularProgress } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 
-const LoginForm: React.FC = () => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState(''); 
-  const [password, setPassword] = useState('');
+interface LoginFormData {
+  username: string;
+  password: string;
+}
+
+const LoginForm = () => {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
-  const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!username.trim() || !password.trim()) {
-      setError('Por favor ingrese nombre de usuario y contraseña');
-      return;
-    }
-  
-    setLoading(true);
-    setError('');
-  
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>();
+
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      const { requires2FA } = await login(username.trim(), password.trim());
+      setLoading(true);
+      setError('');
       
-      if (requires2FA) {
-        navigate('/verify-2fa', { 
-          state: { 
-            username: username.trim(),
-            redirectTo: '/dashboard'
-          }
-        });
-      } else {
-        navigate('/dashboard');
+      const result = await login(data.username, data.password);
+      
+      if (result.success) {
+        const from = location.state?.from?.pathname || '/dashboard';
+        navigate(from, { replace: true });
       }
-    } catch (err: any) {
-      console.error('Login error:', err);
-      setError(err.message || 'Error al conectar con el servidor');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-        p: 2
+    <Box 
+      component="form" 
+      onSubmit={handleSubmit(onSubmit)} 
+      sx={{ 
+        mt: 1, 
+        maxWidth: 400, 
+        mx: 'auto',
+        p: 3,
+        boxShadow: 3,
+        borderRadius: 2
       }}
     >
-      <Paper
-        elevation={6}
-        sx={{
-          p: 4,
-          width: '100%',
-          maxWidth: 450,
-          borderRadius: 2
-        }}
-      >
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom 
-          textAlign="center"
-          sx={{ 
-            fontWeight: 'bold',
-            color: 'primary.main',
-            mb: 3
-          }}
-        >
-          Iniciar Sesión
+      <Typography variant="h4" gutterBottom align="center">
+        Iniciar Sesión
+      </Typography>
+
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
         </Typography>
+      )}
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
+      <TextField
+        fullWidth
+        label="Nombre de usuario"
+        margin="normal"
+        {...register('username', { required: 'Usuario es requerido' })}
+        error={!!errors.username}
+        helperText={errors.username?.message}
+        disabled={loading}
+      />
 
-        <Box component="form" onSubmit={handleSubmit} noValidate>
-          <Stack spacing={3}>
-            <TextField
-              fullWidth
-              label="Nombre de Usuario"
-              variant="outlined"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              disabled={loading}
-              error={!!error}
-              inputProps={{
-                'data-testid': 'username-input'
-              }}
-            />
+      <TextField
+        fullWidth
+        label="Contraseña"
+        type="password"
+        margin="normal"
+        {...register('password', { required: 'Contraseña es requerida' })}
+        error={!!errors.password}
+        helperText={errors.password?.message}
+        disabled={loading}
+      />
 
-            <TextField
-              fullWidth
-              label="Contraseña"
-              variant="outlined"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              type={showPassword ? 'text' : 'password'}
-              disabled={loading}
-              error={!!error}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                      disabled={loading}
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
+      <Button
+        type="submit"
+        fullWidth
+        variant="contained"
+        sx={{ mt: 3, mb: 2 }}
+        disabled={loading}
+      >
+        {loading ? <CircularProgress size={24} /> : 'Iniciar Sesión'}
+      </Button>
 
-            <Box textAlign="right">
-              <Link 
-                component="button"
-                variant="body2"
-                onClick={() => navigate('/forgot-password')}
-                sx={{ textDecoration: 'none' }}
-                disabled={loading}
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </Box>
-
-            <Button
-              fullWidth
-              variant="contained"
-              size="large"
-              type="submit"
-              disabled={loading}
-              sx={{
-                py: 1.5,
-                borderRadius: 1,
-                fontSize: '1rem',
-                textTransform: 'uppercase'
-              }}
-              data-testid="login-button"
-            >
-              {loading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : (
-                'INICIAR SESIÓN'
-              )}
-            </Button>
-
-            <Divider sx={{ my: 2 }}>o</Divider>
-
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => navigate('/register')}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 'normal'
-              }}
-              disabled={loading}
-            >
-              ¿No tienes cuenta? Regístrate
-            </Button>
-          </Stack>
-        </Box>
-      </Paper>
+      <Button
+        fullWidth
+        variant="text"
+        onClick={() => navigate('/register')}
+        sx={{ mt: 1 }}
+      >
+        ¿No tienes cuenta? Regístrate
+      </Button>
     </Box>
   );
 };

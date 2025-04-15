@@ -1,220 +1,230 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-  Paper, Button, IconButton, TablePagination, TextField, Box, Alert 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper, 
+  Button, 
+  IconButton, 
+  TablePagination, 
+  TextField, 
+  Box, 
+  Alert,
+  CircularProgress,
+  Typography
 } from '@mui/material';
 import { Edit, Delete, Add } from '@mui/icons-material';
-import api from '../../api/productApi';
-import { Producto, ProductoListRequest, ProductoListResponse } from '../../types/productTypes';
+import productApi from '../../api/productApi';
+import { 
+  Producto, 
+  ProductoListRequest, 
+  ProductoDeleteRequest,
+  SignatureParams
+} from '../../types/productTypes';
 import { generateSignature } from '../../services/signatureService';
 import ProductForm from './ProductForm';
 
 const ProductList: React.FC = () => {
-  // Estados
   const [products, setProducts] = useState<Producto[]>([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [openForm, setOpenForm] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Producto | null>(null);
   const [error, setError] = useState<string | null>(null);
-  
-  // Refs para control del ciclo de vida
-  const isMounted = useRef(true);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Función para cargar productos con protección
   const fetchProducts = useCallback(async () => {
-    if (!isMounted.current) return;
-
-    // Cancelar petición anterior si existe
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    
     try {
+      setLoading(true);
       setError(null);
+      
       const request: ProductoListRequest = {
-        nombre: searchTerm,
-        pagina: page,
-        tamañoPagina: rowsPerPage,
-        firma: generateSignature({ 
-          nombre: searchTerm, 
-          pagina: page, 
-          tamañoPagina: rowsPerPage 
-        }, 'tu-clave-secreta')
+        nombre: searchTerm || '',
+        pagina: page + 1,
+        tamañoPagina: rowsPerPage
       };
       
-      const response = await api.listProducts(request, {
-        signal: controller.signal
-      });
+      const response = await productApi.listProducts(request);
       
-      // Verificar montaje antes de actualizar estado
-      if (isMounted.current) {
-        setProducts(response.productos || []);
-        setTotalItems(response.totalElementos || 0);
+      if (response && response.productos) {
+        setProducts(response.productos);
+        setTotalItems(response.totalElementos || response.productos.length);
+      } else {
+        setError('La respuesta no contiene datos válidos');
       }
     } catch (err) {
-      if (isMounted.current) {
-        // Verificar si es un AbortError primero
-        if (err instanceof Error && err.name === 'AbortError') {
-          return; // No hacer nada si fue abortado
-        }
-        
-        console.error('Error al cargar productos:', err);
-        setError('Error al cargar los productos. Por favor, inténtelo de nuevo.');
-        
-        // Opcional: puedes verificar el tipo de error más específico aquí
-        if (err instanceof Error) {
-          setError(`Error al cargar los productos: ${err.message}`);
-        }
-      }
+      console.error('Error al cargar productos:', err);
+      setError('Error al cargar productos');
+    } finally {
+      setLoading(false);
     }
   }, [page, rowsPerPage, searchTerm]);
-
-  // Efecto para cargar productos con limpieza
+  
   useEffect(() => {
-    isMounted.current = true;
-    const timer = setTimeout(() => fetchProducts(), 300);
-
-    return () => {
-      isMounted.current = false;
-      clearTimeout(timer);
-      abortControllerRef.current?.abort();
-    };
+    fetchProducts();
   }, [fetchProducts]);
 
-  // Manejadores de eventos protegidos
   const handleChangePage = (_: unknown, newPage: number) => {
-    if (isMounted.current) setPage(newPage);
+    setPage(newPage);
   };
 
   const handleChangeRowsPerPage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (isMounted.current) {
-      setRowsPerPage(parseInt(e.target.value, 10));
-      setPage(0);
-    }
+    const newSize = parseInt(e.target.value, 10);
+    setRowsPerPage(newSize);
+    setPage(0);
   };
 
   const handleEdit = (product: Producto) => {
-    if (isMounted.current) {
-      setCurrentProduct(product);
-      setOpenForm(true);
-    }
+    setCurrentProduct({
+      ...product,
+      precio: typeof product.precio === 'string' ? parseFloat(product.precio) : product.precio || 0,
+      cantidad: typeof product.cantidad === 'string' ? parseInt(product.cantidad) : product.cantidad || 0
+    });
+    setOpenForm(true);
   };
 
-  const handleDelete = async (nombre: string) => {
-    if (!isMounted.current) return;
-    
+  const handleDelete = async (product: Producto) => {
     try {
-      await api.deleteProduct({
-        nombre,
-        firma: generateSignature({ nombre }, 'tu-clave-secreta')
-      });
+      await productApi.deleteProduct(product.nombre); // Extraemos el nombre aquí
       fetchProducts();
-    } catch (err) {
-      if (isMounted.current) {
-        console.error('Error al eliminar:', err);
-        
-        // Manejo de error más seguro
-        if (err instanceof Error) {
-          setError(`Error al eliminar el producto: ${err.message}`);
-        } else {
-          setError('Error al eliminar el producto');
-        }
-      }
+    } catch (err: any) {
+      setError(err.response?.data?.mensaje || 'Error al eliminar el producto');
     }
   };
 
   const handleFormClose = () => {
-    if (isMounted.current) {
-      setOpenForm(false);
-      setCurrentProduct(null);
-      fetchProducts();
-    }
+    setOpenForm(false);
+    setCurrentProduct(null);
+  };
+
+  const handleFormSubmitSuccess = () => {
+    handleFormClose();
+    fetchProducts();
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(0);
+    fetchProducts();
   };
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* Controles de búsqueda y agregar */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+      <Box 
+        component="form"
+        onSubmit={handleSearchSubmit}
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          mb: 3,
+          flexWrap: 'wrap',
+          gap: 2
+        }}
+      >
         <TextField
           label="Buscar productos"
           variant="outlined"
           size="small"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ minWidth: 250 }}
         />
+        <Button 
+          type="submit"
+          variant="contained"
+          sx={{ minWidth: 180 }}
+        >
+          Buscar
+        </Button>
         <Button 
           variant="contained" 
           startIcon={<Add />}
-          onClick={() => isMounted.current && setOpenForm(true)}
+          onClick={() => {
+            setCurrentProduct(null);
+            setOpenForm(true);
+          }}
+          sx={{ minWidth: 180 }}
         >
           Nuevo Producto
         </Button>
       </Box>
 
-      {/* Mensaje de error */}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => isMounted.current && setError(null)}>
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      {/* Tabla de productos */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Nombre</TableCell>
-              <TableCell>Descripción</TableCell>
-              <TableCell>Precio</TableCell>
-              <TableCell>Cantidad</TableCell>
-              <TableCell>Categoría</TableCell>
-              <TableCell>Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {products.map((product) => (
-              <TableRow key={product.id_product || product.nombre}>
-                <TableCell>{product.nombre}</TableCell>
-                <TableCell>{product.descripcion || '-'}</TableCell>
-                <TableCell>${product.precio?.toFixed(2)}</TableCell>
-                <TableCell>{product.cantidad}</TableCell>
-                <TableCell>{product.categoria || '-'}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleEdit(product)}>
-                    <Edit color="primary" />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(product.nombre)}>
-                    <Delete color="error" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {loading ? (
+        <Box display="flex" justifyContent="center" py={4}>
+          <CircularProgress size={60} />
+        </Box>
+      ) : products.length === 0 ? (
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="h6">
+            No se encontraron productos
+          </Typography>
+          {searchTerm && (
+            <Button onClick={() => setSearchTerm('')} sx={{ mt: 2 }}>
+              Limpiar búsqueda
+            </Button>
+          )}
+        </Paper>
+      ) : (
+        <>
+          <TableContainer component={Paper} sx={{ mb: 2 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Nombre</TableCell>
+                  <TableCell>Descripción</TableCell>
+                  <TableCell>Precio</TableCell>
+                  <TableCell>Stock</TableCell>
+                  <TableCell>Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {products.map(product => (
+                  <TableRow key={product.id_product || product.nombre}>
+                    <TableCell>{product.nombre}</TableCell>
+                    <TableCell>{product.descripcion}</TableCell>
+                    <TableCell>${Number(product.precio).toFixed(2)}</TableCell>
+                    <TableCell>{Number(product.cantidad)}</TableCell>
+                    <TableCell>
+                      <IconButton onClick={() => handleEdit(product)}>
+                        <Edit color="primary" />
+                      </IconButton>
+                      <IconButton onClick={() => handleDelete(product)}>
+                        <Delete color="error" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={totalItems}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
+        </>
+      )}
 
-      {/* Paginación */}
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={totalItems}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-
-      {/* Formulario de producto */}
       <ProductForm 
         open={openForm} 
-        onClose={handleFormClose} 
+        onClose={handleFormClose}
+        onSubmitSuccess={handleFormSubmitSuccess}
         product={currentProduct} 
       />
     </Box>

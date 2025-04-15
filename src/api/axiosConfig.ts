@@ -14,15 +14,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor para manejar errores
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response.status === 401) {
-      // Manejar logout o redirección
+    if (error.response?.status === 401) {
+      // Evita redirección múltiple
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'; // Full page reload
+      }
     }
     return Promise.reject(error);
   }
-); 
+);
 
 export default api;

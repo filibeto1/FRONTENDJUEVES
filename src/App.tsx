@@ -27,7 +27,10 @@ import ForgotUsername from './components/auth/ForgotUsername';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 
-const App: React.FC = () => {
+// Error Boundary
+import ErrorBoundary from './components/ErrorBoundary';
+
+const App = () => {
   useEffect(() => {
     const handleError = (error: ErrorEvent) => {
       console.error('Error global:', error);
@@ -39,51 +42,55 @@ const App: React.FC = () => {
 
   return (
     <Router>
-      <AuthProvider>
-        <ToastContainer
-          position="top-center"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss={false}
-          draggable
-          pauseOnHover
-          theme="light"
-          style={{ 
-            fontSize: '14px',
-            margin: '8px 0',
-            padding: '12px' // Mover el padding aquí
-          }}
-        />
+      <ErrorBoundary>
+        <AuthProvider>
+          <ToastContainer
+            position="top-center"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss={false}
+            draggable
+            pauseOnHover
+            theme="light"
+            toastStyle={{
+              fontSize: '14px',
+              margin: '8px 0',
+              padding: '12px'
+            }}
+          />
         
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          
-          <Route element={<AuthRoute />}>
-            <Route path="/login" element={<LoginForm />} />
-            <Route path="/register" element={<RegisterForm />} />
-            <Route path="/verify-2fa" element={<TwoFactorAuth />} />
-            <Route path="/forgot-username" element={<ForgotUsername />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password/:token" element={<ResetPassword />} />
-          </Route>
-          
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/products" element={<ProductsPage />} />
-              
-              <Route element={<ProtectedAdminRoute />}>
-                <Route path="/admin" element={<AdminPanel />} />
-              </Route>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            
+            {/* Rutas de autenticación (solo para usuarios NO logueados) */}
+            <Route element={<AuthRoute />}>
+              <Route path="/login" element={<LoginForm />} />
+              <Route path="/register" element={<RegisterForm />} />
+              <Route path="/verify-2fa" element={<TwoFactorAuth />} />
+              <Route path="/forgot-username" element={<ForgotUsername />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
             </Route>
-          </Route>
-          
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
+            
+            {/* Rutas protegidas (solo para usuarios logueados) */}
+{/* Rutas protegidas (solo para usuarios logueados) */}
+<Route element={<ProtectedRoute />}>
+  <Route element={<Layout />}>
+    <Route path="/dashboard" element={<Dashboard />} />
+    <Route path="/products" element={<ProductsPage />} />
+    {/* Accesible para todos los usuarios logueados */}
+    <Route path="/admin" element={<AdminPanel />} />
+  </Route>
+</Route>
+            
+            {/* Ruta comodín para redireccionar */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </ErrorBoundary>
     </Router>
   );
 };

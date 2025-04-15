@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { 
   AppBar, 
   Toolbar, 
@@ -7,72 +7,30 @@ import {
   Box, 
   Container, 
   Paper,
-  CircularProgress 
+  CircularProgress,
+  useTheme
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import ProductList from '../components/products/ProductList';
 
 const Dashboard: React.FC = () => {
-  const { user, isAuthenticated, loading, logout } = useAuth();
-  const [componentMounted, setComponentMounted] = useState(false);
+  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
 
-  // Efecto para controlar el montaje/desmontaje
   useEffect(() => {
-    setComponentMounted(true);
-    return () => setComponentMounted(false);
-  }, []);
-
-  // Efecto para redirección si no está autenticado
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       navigate('/login');
     }
-  }, [isAuthenticated, loading, navigate]);
-
-  // Efecto para mostrar toast de bienvenida
-  useEffect(() => {
-    if (componentMounted && isAuthenticated && user) {
-      const timer = setTimeout(() => {
-        if (componentMounted) {
-          toast.info(
-            <div style={{ padding: '8px' }}>
-              <h3 style={{ fontWeight: 'bold', marginBottom: '4px' }}>¡Bienvenido!</h3>
-              <p>Usuario: {user.username}</p>
-              <p>Rol: {user.role}</p>
-            </div>,
-            {
-              toastId: 'welcome-toast',
-              position: "top-center",
-              autoClose: 5000,
-              hideProgressBar: true,
-              closeOnClick: true,
-              pauseOnHover: true,
-              draggable: true,
-              theme: "colored"
-            }
-          );
-        }
-      }, 500);
-
-      return () => {
-        clearTimeout(timer);
-        if (componentMounted) {
-          toast.dismiss('welcome-toast');
-        }
-      };
-    }
-  }, [componentMounted, isAuthenticated, user]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   const handleLogout = () => {
-    toast.dismiss();
     logout();
-    setTimeout(() => navigate('/login'), 150);
+    navigate('/login');
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <Box sx={{ 
         display: 'flex', 
@@ -85,44 +43,28 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
-
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static" elevation={4}
-        sx={{ 
-          background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-          color: 'white',
-          py: 1
-        }}
-      >
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      minHeight: '100vh',
+      backgroundColor: theme.palette.background.default
+    }}>
+      <AppBar position="static" elevation={1}>
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ 
-            flexGrow: 1,
-            fontWeight: 'bold',
-            fontSize: '1.25rem'
-          }}>
-            Bienvenido al Dashboard
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Sistema de Gestión
           </Typography>
-          
+          <Typography variant="subtitle1" sx={{ mr: 2 }}>
+            {user?.username}
+          </Typography>
           <Button 
-            variant="contained"
+            color="inherit"
             onClick={handleLogout}
             sx={{
-              backgroundColor: 'white',
-              color: '#1976d2',
-              fontWeight: 'bold',
               '&:hover': {
-                backgroundColor: '#f5f5f5',
-              },
-              px: 3,
-              py: 1,
-              borderRadius: 2,
-              boxShadow: 2
+                backgroundColor: 'rgba(255, 255, 255, 0.1)'
+              }
             }}
           >
             Cerrar sesión
@@ -130,34 +72,30 @@ const Dashboard: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg" sx={{ mt: 4, flexGrow: 1 }}>
-        <Box sx={{ p: 3 }}>
-          <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
-            <Typography variant="h5" gutterBottom>
-              Información de tu cuenta
-            </Typography>
-            <Typography>Usuario: {user?.username}</Typography>
-            <Typography>Rol: {user?.role}</Typography>
-          </Paper>
+      <Container maxWidth="xl" sx={{ 
+        mt: 4, 
+        flexGrow: 1,
+        mb: 4
+      }}>
+        <Paper elevation={0} sx={{ 
+          p: 3, 
+          mb: 4,
+          backgroundColor: 'transparent'
+        }}>
+          <Typography variant="h4" gutterBottom>
+            Panel de Control
+          </Typography>
+          <Typography variant="body1">
+            Bienvenido al sistema de gestión de productos
+          </Typography>
+        </Paper>
 
-          {isAdmin ? (
-            <Paper elevation={3} sx={{ p: 3 }}>
-              <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
-                Administración de Productos
-              </Typography>
-              <ProductList />
-            </Paper>
-          ) : (
-            <Paper elevation={3} sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="h6" color="textSecondary">
-                No tienes permisos para acceder a esta sección
-              </Typography>
-              <Typography variant="body1" sx={{ mt: 2 }}>
-                Contacta al administrador si necesitas acceso
-              </Typography>
-            </Paper>
-          )}
-        </Box>
+        <Paper elevation={3} sx={{ 
+          p: 3,
+          borderRadius: 2
+        }}>
+          <ProductList />
+        </Paper>
       </Container>
     </Box>
   );
