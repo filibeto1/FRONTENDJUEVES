@@ -24,6 +24,12 @@ interface ProductViewProps {
 const ProductView: React.FC<ProductViewProps> = ({ product, open, onClose }) => {
   if (!product) return null;
 
+  // Función para formatear el precio
+  const formatPrice = (price: number | string) => {
+    const numericPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return numericPrice.toFixed(2);
+  };
+
   return (
     <Dialog 
       open={open} 
@@ -68,7 +74,7 @@ const ProductView: React.FC<ProductViewProps> = ({ product, open, onClose }) => 
                 Precio
               </Typography>
               <Typography variant="h6" color="primary">
-                ${product.precio?.toFixed(2)}
+                ${formatPrice(product.precio)}
               </Typography>
             </Box>
             
@@ -77,7 +83,7 @@ const ProductView: React.FC<ProductViewProps> = ({ product, open, onClose }) => 
                 Cantidad en stock
               </Typography>
               <Typography variant="h6">
-                {product.cantidad}
+                {Number(product.cantidad)}
               </Typography>
             </Box>
           </Box>
@@ -88,7 +94,7 @@ const ProductView: React.FC<ProductViewProps> = ({ product, open, onClose }) => 
                 Fecha de creación
               </Typography>
               <Typography>
-              {format(new Date(product.fechaCreacion), "PPP")}
+                {format(new Date(product.fechaCreacion), "PPP", { locale: es })}
               </Typography>
             </Box>
           )}

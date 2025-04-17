@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useRef } from 'react';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { 
@@ -7,22 +7,41 @@ import {
   Button, 
   Box, 
   Typography, 
-  CircularProgress, 
+  CircularProgress,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   FormControl,
   InputLabel,
   Select,
-  MenuItem,
-  Alert
+  MenuItem
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { availableRoles } from '../../utils/roles';
-import { api } from '../../api/authAPI';
+import axios from 'axios';
 
-// Eliminamos la importación de Grid y usamos Box en su lugar
+// Configuración de axios
+const api = axios.create({
+  baseURL: 'http://localhost:8035',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
-const schema = yup.object().shape({
+// Interface para la respuesta de la API
+interface ApiResponse {
+  codigo: number;
+  status?: string;
+  mensaje: string;
+  data?: any;
+}
+
+// Esquema de validación para el formulario principal
+const registerSchema = yup.object().shape({
   username: yup.string().required('Nombre de usuario es requerido'),
-  correo: yup.string().email('Email inválido').required('Email es requerido'),
+  email: yup.string().email('Email inválido').required('Email es requerido'),
   password: yup.string()
     .required('Contraseña es requerida')
     .min(8, 'La contraseña debe tener al menos 8 caracteres')
@@ -36,76 +55,151 @@ const schema = yup.object().shape({
   rol: yup.string().required('Rol es requerido')
 });
 
+// Esquema de validación para la verificación
+const verificationSchema = yup.object().shape({
+  verificationCode: yup.string().required('Código de verificación es requerido')
+});
+
 interface RegisterFormData {
   username: string;
-  correo: string;
+  email: string;
   password: string;
   confirmPassword: string;
   rol: string;
 }
 
-interface ApiResponse {
-  codigo: number;
-  mensaje: string;
-  data?: any;
+interface VerificationData {
+  verificationCode: string;
 }
 
 const RegisterForm: React.FC = () => {
   const formRef = useRef<HTMLFormElement>(null);
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
-    resolver: yupResolver(schema),
-    defaultValues: {
-      username: '',
-      correo: '',
-      password: '',
-      confirmPassword: '',
-      rol: availableRoles[0]?.value || ''
-    }
+  const { 
+    register, 
+    handleSubmit, 
+    formState: { errors }, 
+    setValue, 
+    watch,
+    reset
+  } = useForm<RegisterFormData>({
+    resolver: yupResolver(registerSchema)
+  });
+
+  const { 
+    register: registerVerification, 
+    handleSubmit: handleSubmitVerification, 
+    formState: { errors: verificationErrors },
+    reset: resetVerification
+  } = useForm<VerificationData>({
+    resolver: yupResolver(verificationSchema)
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [verificationDialogOpen, setVerificationDialogOpen] = useState(false);
+  const [tempFormData, setTempFormData] = useState<RegisterFormData>();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    return () => {
-      setLoading(false);
-    };
-  }, []);
-
-  const onSubmit = async (data: RegisterFormData) => {
+  const onSubmitRegister: SubmitHandler<RegisterFormData> = async (data) => {
     try {
       setLoading(true);
       setError('');
-      setSuccess(false);
       
-      const requestData = {
-        username: data.username,
-        password: data.password,
-        correo: data.correo,
-        rol: data.rol,
-        estatus: true,
-        doblePasoActivado: false,
-      };
+      // Verificar primero si el correo ya existe
+      const checkEmailResponse = await api.get<ApiResponse>(
+        `/API/v1/ENCRYPT/usuarioServicio/checkEmail?correo=${encodeURIComponent(data.email)}`
+      );
   
-      console.log('Datos a enviar:', JSON.stringify(requestData, null, 2));
-      
-      const response = await api.post<ApiResponse>('/API/v1/ENCRYPT/usuarioServicio/crearUsuario', requestData);
-
+      if (checkEmailResponse.data.codigo !== 0) {
+        throw new Error(checkEmailResponse.data.mensaje || 'El correo ya está registrado');
+      }
+  
+      // Enviar código de verificación
+      const response = await api.post<ApiResponse>(
+        '/API/v1/ENCRYPT/usuarioServicio/sendVerificationCode',
+        { correo: data.email },
+        {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+  
       if (response.data.codigo === 0) {
+        setTempFormData(data);
+        setVerificationDialogOpen(true);
+      } else {
+        throw new Error(response.data.mensaje || 'Error al enviar código');
+      }
+      
+    } catch (error: any) {
+      console.error('Error en registro:', error);
+      setError(
+        error.response?.data?.mensaje || 
+        error.message || 
+        'Error al enviar código de verificación'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const onSubmitVerification: SubmitHandler<VerificationData> = async (data) => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      if (!tempFormData) {
+        throw new Error('Datos de registro no encontrados');
+      }
+  
+      const verifyResponse = await api.post<ApiResponse>(
+        '/API/v1/ENCRYPT/usuarioServicio/verifyCode',
+        {
+          correo: tempFormData.email,
+          codigo: data.verificationCode // Asegúrate que coincide con el backend
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+  
+      if (verifyResponse.data.codigo !== 0) {
+        throw new Error(verifyResponse.data.mensaje || 'Código inválido');
+      }
+  
+      // Procede con el registro
+      const registerResponse = await api.post<ApiResponse>(
+        '/API/v1/ENCRYPT/usuarioServicio/crearUsuario',
+        {
+          username: tempFormData.username,
+          password: tempFormData.password,
+          correo: tempFormData.email,
+          rol: tempFormData.rol
+        }
+      );
+  
+      if (registerResponse.data.codigo === 0) {
         setSuccess(true);
+        setVerificationDialogOpen(false);
         setTimeout(() => navigate('/login'), 2000);
       } else {
-        setError(response.data.mensaje || 'Error en el registro');
+        throw new Error(registerResponse.data.mensaje || 'Error en el registro');
       }
+      
     } catch (error: any) {
-      console.error("Error completo:", error);
-      if (error.response) {
-        console.error("Respuesta del servidor:", error.response.data);
-        setError(error.response.data?.mensaje || 'Error en los datos enviados');
-      } else {
-        setError('Error de conexión con el servidor');
+      console.error("Error en verificación:", error);
+      setError(error.response?.data?.mensaje || error.message || 'Error al verificar el código');
+      
+      // Opcional: Reenviar código automáticamente si expiró
+      if (error.message.includes('expirado') && tempFormData) {
+        setError('Código expirado. Se ha enviado un nuevo código.');
+        await api.post('/API/v1/ENCRYPT/usuarioServicio/sendVerificationCode', {
+          correo: tempFormData.email
+        });
       }
     } finally {
       setLoading(false);
@@ -116,7 +210,7 @@ const RegisterForm: React.FC = () => {
     <Box 
       component="form" 
       ref={formRef}
-      onSubmit={handleSubmit(onSubmit)} 
+      onSubmit={handleSubmit(onSubmitRegister)} 
       sx={{ 
         mt: 1, 
         maxWidth: 500, 
@@ -141,10 +235,9 @@ const RegisterForm: React.FC = () => {
           {error}
         </Alert>
       )}
-      
-      {/* Reemplazamos Grid con Box y usamos flexbox */}
+
+      {/* Formulario principal de registro */}
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {/* Campo de nombre de usuario */}
         <TextField
           margin="normal"
           fullWidth
@@ -156,46 +249,41 @@ const RegisterForm: React.FC = () => {
           disabled={loading}
         />
         
-        {/* Campo de correo electrónico */}
         <TextField
           margin="normal"
           fullWidth
           label="Correo electrónico"
           autoComplete="email"
-          {...register('correo')}
-          error={!!errors.correo}
-          helperText={errors.correo?.message}
+          {...register('email')}
+          error={!!errors.email}
+          helperText={errors.email?.message}
           disabled={loading}
         />
         
-        {/* Campos de contraseña en fila para pantallas grandes */}
-        <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-          <TextField
-            margin="normal"
-            fullWidth
-            label="Contraseña"
-            type="password"
-            autoComplete="new-password"
-            {...register('password')}
-            error={!!errors.password}
-            helperText={errors.password?.message}
-            disabled={loading}
-          />
-          
-          <TextField
-            margin="normal"
-            fullWidth
-            label="Confirmar Contraseña"
-            type="password"
-            autoComplete="new-password"
-            {...register('confirmPassword')}
-            error={!!errors.confirmPassword}
-            helperText={errors.confirmPassword?.message}
-            disabled={loading}
-          />
-        </Box>
+        <TextField
+          margin="normal"
+          fullWidth
+          label="Contraseña"
+          type="password"
+          autoComplete="new-password"
+          {...register('password')}
+          error={!!errors.password}
+          helperText={errors.password?.message}
+          disabled={loading}
+        />
         
-        {/* Campo de selección de rol */}
+        <TextField
+          margin="normal"
+          fullWidth
+          label="Confirmar Contraseña"
+          type="password"
+          autoComplete="new-password"
+          {...register('confirmPassword')}
+          error={!!errors.confirmPassword}
+          helperText={errors.confirmPassword?.message}
+          disabled={loading}
+        />
+        
         <FormControl fullWidth margin="normal" error={!!errors.rol}>
           <InputLabel>Rol</InputLabel>
           <Select
@@ -217,7 +305,6 @@ const RegisterForm: React.FC = () => {
           )}
         </FormControl>
         
-        {/* Botón de submit */}
         <Button
           type="submit"
           fullWidth
@@ -228,6 +315,52 @@ const RegisterForm: React.FC = () => {
           {loading ? <CircularProgress size={24} /> : 'Registrarse'}
         </Button>
       </Box>
+
+      {/* Diálogo de verificación (aparece después de enviar el formulario) */}
+      <Dialog open={verificationDialogOpen} onClose={() => setVerificationDialogOpen(false)}>
+  <DialogTitle>Verificación de Correo</DialogTitle>
+  <DialogContent>
+    <Typography sx={{ mb: 2 }}>
+      Hemos enviado un código a {tempFormData?.email}. Ingresa el código recibido:
+    </Typography>
+    
+    {error && (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {error}
+      </Alert>
+    )}
+    
+    <TextField
+      autoFocus
+      margin="dense"
+      label="Código de verificación"
+      fullWidth
+      variant="outlined"
+      {...registerVerification('verificationCode')}
+      error={!!verificationErrors.verificationCode}
+      helperText={verificationErrors.verificationCode?.message}
+      disabled={loading}
+    />
+  </DialogContent>
+  <DialogActions>
+    <Button 
+      onClick={() => {
+        setVerificationDialogOpen(false);
+        setError('');
+      }}
+      disabled={loading}
+    >
+      Cancelar
+    </Button>
+    <Button 
+      onClick={handleSubmitVerification(onSubmitVerification)} 
+      disabled={loading}
+      variant="contained"
+    >
+      {loading ? <CircularProgress size={24} /> : 'Verificar'}
+    </Button>
+  </DialogActions>
+</Dialog>
     </Box>
   );
 };

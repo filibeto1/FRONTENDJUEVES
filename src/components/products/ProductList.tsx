@@ -14,17 +14,15 @@ import {
   Box, 
   Alert,
   CircularProgress,
-  Typography
+  Typography,
+  Avatar,
+  Dialog,
+  DialogContent,
+  DialogTitle
 } from '@mui/material';
-import { Edit, Delete, Add } from '@mui/icons-material';
+import { Edit, Delete, Add, ZoomIn } from '@mui/icons-material';
 import productApi from '../../api/productApi';
-import { 
-  Producto, 
-  ProductoListRequest, 
-  ProductoDeleteRequest,
-  SignatureParams
-} from '../../types/productTypes';
-import { generateSignature } from '../../services/signatureService';
+import { Producto, ProductoListRequest } from '../../types/productTypes';
 import ProductForm from './ProductForm';
 
 const ProductList: React.FC = () => {
@@ -37,7 +35,17 @@ const ProductList: React.FC = () => {
   const [currentProduct, setCurrentProduct] = useState<Producto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  
 
+
+  
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImage(imageUrl || null);  // Aseguramos que nunca sea undefined
+    setImageDialogOpen(true);
+  };
+  
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
@@ -51,9 +59,10 @@ const ProductList: React.FC = () => {
       
       const response = await productApi.listProducts(request);
       
-      if (response && response.productos) {
-        setProducts(response.productos);
-        setTotalItems(response.totalElementos || response.productos.length);
+      // Acceder a response.data en lugar de response directamente
+      if (response.data && response.data.productos) {
+        setProducts(response.data.productos);
+        setTotalItems(response.data.totalElementos || response.data.productos.length);
       } else {
         setError('La respuesta no contiene datos válidos');
       }
@@ -90,7 +99,7 @@ const ProductList: React.FC = () => {
 
   const handleDelete = async (product: Producto) => {
     try {
-      await productApi.deleteProduct(product.nombre); // Extraemos el nombre aquí
+      await productApi.deleteProduct(product.nombre);
       fetchProducts();
     } catch (err: any) {
       setError(err.response?.data?.mensaje || 'Error al eliminar el producto');
@@ -182,8 +191,10 @@ const ProductList: React.FC = () => {
             <Table>
               <TableHead>
                 <TableRow>
+                 
                   <TableCell>Nombre</TableCell>
                   <TableCell>Descripción</TableCell>
+                  <TableCell>Categoria</TableCell>
                   <TableCell>Precio</TableCell>
                   <TableCell>Stock</TableCell>
                   <TableCell>Acciones</TableCell>
@@ -192,10 +203,13 @@ const ProductList: React.FC = () => {
               <TableBody>
                 {products.map(product => (
                   <TableRow key={product.id_product || product.nombre}>
+                    
                     <TableCell>{product.nombre}</TableCell>
                     <TableCell>{product.descripcion}</TableCell>
+                    <TableCell>{product.categoria}</TableCell>
                     <TableCell>${Number(product.precio).toFixed(2)}</TableCell>
                     <TableCell>{Number(product.cantidad)}</TableCell>
+                    
                     <TableCell>
                       <IconButton onClick={() => handleEdit(product)}>
                         <Edit color="primary" />
@@ -227,6 +241,8 @@ const ProductList: React.FC = () => {
         onSubmitSuccess={handleFormSubmitSuccess}
         product={currentProduct} 
       />
+
+     
     </Box>
   );
 };

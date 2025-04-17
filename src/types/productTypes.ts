@@ -1,37 +1,24 @@
-// Interfaz principal para productos
 export interface Producto {
-  id_product: number;
+  id_product?: number;
   nombre: string;
   descripcion?: string;
-  precio: number;
-  cantidad: number;
-  categoria?: string;
-  fechaCreacion?: string;
+  precio: number | string;
+  cantidad: number | string;
+  categoria: 'Instrumentos de cuerda' | 'Instrumentos de viento' | 'Instrumentos de percusión' | 'Instrumentos electrónicos';
+
+  fechaCreacion?: string | Date;
 }
 
-// Interfaces para props de componentes
-export interface ProductFormProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmitSuccess?: () => void;
-  product: Producto | null;
-}
-
-// Interfaces para requests
-export interface ProductoBaseRequest {
-  nombre: string;
-  firma: string;
-}
 
 export interface ProductoRequest {
   nombre: string;
   descripcion?: string;
   precio: number;
   cantidad: number;
-  categoria?: string;
-  firma: string; // Añadir este campo
-
+  categoria: 'Instrumentos de cuerda' | 'Instrumentos de viento' | 'Instrumentos de percusión' | 'Instrumentos electrónicos';
+  firma: string;
 }
+
 export interface ProductoUpdateRequest {
   nombreOriginal: string;
   nuevoNombre: string;
@@ -39,7 +26,7 @@ export interface ProductoUpdateRequest {
   precio: number;
   cantidad: number;
   categoria?: string;
-  firma: string; // Añadir este campo
+  firma: string;
 }
 
 export interface ProductoDeleteRequest {
@@ -53,32 +40,28 @@ export interface ProductoListRequest {
   tamañoPagina: number;
 }
 
-// Interfaces para responses
 export interface ProductoResponse {
+  id_product?: number;
   codigo: number;
   mensaje: string;
-  nombre?: string;
-  descripcion?: string;
-  precio?: number;
-  cantidad?: number;
-  categoria?: string;
-  fechaCreacion?: string;
 }
+
 export interface ProductoListResponse {
   codigo: number;
   mensaje: string;
   productos: Producto[];
-  totalPaginas: number;
   totalElementos: number;
+  totalPaginas: number;
 }
 
-
-export interface SignatureParams {
-  nombre: string;
-  descripcion?: string;
-  precio?: number;
-  cantidad?: number;
-  categoria?: string;
+export interface ProductoCreateResponse {
+  data: Producto;
+  codigo: number;
+  mensaje: string;
 }
 
-// Elimina el export type al final y usa solo las exportaciones de interface
+export interface ProductoUpdateResponse {
+  data: Producto;
+  codigo: number;
+  mensaje: string;
+}

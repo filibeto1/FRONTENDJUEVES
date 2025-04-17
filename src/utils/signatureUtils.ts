@@ -1,8 +1,21 @@
-// src/api/firmaService.ts
+// signatureUtils.ts
 
-import * as CryptoJS from 'crypto-js';
+import CryptoJS from 'crypto-js';
+interface SignatureParams {
+  nombre?: string;
+  nombreOriginal?: string;
+  nuevoNombre?: string;
+  descripcion?: string;
+  precio?: number;
+  cantidad?: number;
+  categoria?: string;
+}
 
-const PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
+export const generateSignature = (params: SignatureParams): string => {
+
+  
+  // Aquí debes cargar tu clave privada RSA (la misma que usa el backend)
+  const privateKey = `-----BEGIN PRIVATE KEY-----
 MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDkIDGSyHlYkAVS
 43gz9XepkFd74TFz3Wr1XT1rhUdX5aN6+q5wceFQCuxVIDgpguSViBE9HtEvBvdv
 6Aig3yS5F5VMzPfY1CZN2c4hybGdXFXHkrtQ4mdj1e72qgTXkOaffbspdX27obOn
@@ -30,22 +43,21 @@ shaXb8CwVWT7ka67pCHoLwjEQq0HtQ4cId4lS1k+4ecENgHFxWgiTaHBZ+2TaHAi
 nu0/AZ5qVlYegaDy8o/aYy1xz5YwKUBKsWt77pDbpTm58rDX58iI2MtdfK3S3xUh
 SZFGSlsiRlVAAN8LbGayHQ==
 -----END PRIVATE KEY-----`;
-export function generarFirma(data: any): string {
-    try {
-        // Cadena original específica para login
-        const cadenaOriginal = `||${data.username}|${data.password}||`;
-        console.log('Cadena original login frontend:', cadenaOriginal);
-        
-        // Generar firma usando crypto-js
-        const firma = CryptoJS.HmacSHA256(
-            cadenaOriginal, 
-            CryptoJS.enc.Utf8.parse(PRIVATE_KEY)
-        ).toString(CryptoJS.enc.Hex);
-        
-        if (!firma) throw new Error('Firma inválida');
-        return firma;
-    } catch (error) {
-        console.error('Error en generarFirma:', error);
-        throw new Error('Error al generar firma digital');
-    }
-}
+
+const cadenaOriginal = `||${params.nombre || params.nombreOriginal || ''}|${
+    params.descripcion || ''
+  }|${params.precio?.toString() || '0'}|${
+    params.cantidad?.toString() || '0'
+  }|${params.categoria || 'Instrumentos de cuerda'}||`;
+  
+  console.log('Cadena original para firma:', cadenaOriginal);
+  
+  // IMPORTANTE: Esta clave debe coincidir con la del backend
+  const API_SECRET = '123456'; 
+  
+  const hash = CryptoJS.HmacSHA256(cadenaOriginal, API_SECRET);
+  const signature = CryptoJS.enc.Base64.stringify(hash);
+  
+  console.log('Firma generada:', signature);
+  return signature;
+};
