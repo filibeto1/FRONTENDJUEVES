@@ -1,27 +1,30 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8035',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  withCredentials: true
 });
 
-// Solución: Inicializar headers si no existe
-api.interceptors.request.use((config) => {
+// Configuración simplificada de interceptors
+api.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) {
-    config.headers = config.headers || {}; // Añadir esta línea
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Evita redirección múltiple
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login'; // Full page reload
-      }
+  response => response,
+  error => {
+    if (error.response?.status === 403) {
+      console.error('Acceso denegado - Verifica tus permisos');
+      // Redirigir a login si es necesario
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

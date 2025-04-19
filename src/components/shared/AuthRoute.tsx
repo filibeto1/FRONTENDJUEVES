@@ -7,24 +7,20 @@ const LoadingSpinner = () => (
     <CircularProgress size={60} />
   </div>
 );
-
 const AuthRoute = () => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
-  // Solo para depuración
-  console.log('AuthRoute - estado actual:', {
-    path: location.pathname,
-    isAuthenticated,
-    loading
-  });
-
   if (loading) return <LoadingSpinner />;
 
-  // Redirigir solo si está autenticado Y está intentando acceder a rutas de auth
+  // Redirige a dashboard si está autenticado y en login/register
   if (isAuthenticated && ['/login', '/register'].includes(location.pathname)) {
-    console.log('Redirigiendo a dashboard desde:', location.pathname);
-    return <Navigate to="/dashboard" replace state={{ from: location }} />;
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Redirige a login si no está autenticado y no está en login/register
+  if (!isAuthenticated && !['/login', '/register', '/forgot-password'].includes(location.pathname)) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   return <Outlet />;

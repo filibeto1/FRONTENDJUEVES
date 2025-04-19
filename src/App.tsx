@@ -11,13 +11,15 @@ import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import AuthRoute from './components/shared/AuthRoute';
-import ProtectedAdminRoute from './components/shared/ProtectedAdminRoute';
 
 // Page Components
 import HomePage from './pages/HomePage';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
 import ProductsPage from './pages/ProductsPage';
+import ProductForm from './components/products/ProductForm';
+import UnauthorizedPage from './pages/UnauthorizedPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 // Auth Components
 import LoginForm from './components/auth/LoginForm';
@@ -63,7 +65,9 @@ const App = () => {
           />
         
           <Routes>
+            {/* Rutas públicas */}
             <Route path="/" element={<HomePage />} />
+            <Route path="/unauthorized" element={<UnauthorizedPage />} />
             
             {/* Rutas de autenticación (solo para usuarios NO logueados) */}
             <Route element={<AuthRoute />}>
@@ -76,18 +80,45 @@ const App = () => {
             </Route>
             
             {/* Rutas protegidas (solo para usuarios logueados) */}
-{/* Rutas protegidas (solo para usuarios logueados) */}
-<Route element={<ProtectedRoute />}>
-  <Route element={<Layout />}>
-    <Route path="/dashboard" element={<Dashboard />} />
-    <Route path="/products" element={<ProductsPage />} />
-    {/* Accesible para todos los usuarios logueados */}
-    <Route path="/admin" element={<AdminPanel />} />
-  </Route>
-</Route>
+            <Route element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'USUARIO_NORMAL']} />}>
+              <Route element={<Layout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/products" element={<ProductsPage />} />
+              </Route>
+            </Route>
             
-            {/* Ruta comodín para redireccionar */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Rutas administrativas (solo para administradores) */}
+            <Route element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']} />}>
+              <Route element={<Layout />}>
+                <Route path="/admin" element={<AdminPanel />} />
+                <Route 
+                  path="/products/edit/:id" 
+                  element={
+                    <ProductForm 
+                      open={true} 
+                      onClose={() => window.history.back()} 
+                      onSubmitSuccess={() => window.location.reload()}
+                      product={null}
+                    />
+                  } 
+                />
+                <Route 
+                  path="/products/new" 
+                  element={
+                    <ProductForm 
+                      open={true} 
+                      onClose={() => window.history.back()} 
+                      onSubmitSuccess={() => window.location.reload()}
+                      product={null}
+                    />
+                  } 
+                />
+              </Route>
+            </Route>
+            
+            {/* Manejo de errores */}
+            <Route path="/404" element={<NotFoundPage />} />
+            <Route path="*" element={<Navigate to="/404" replace />} />
           </Routes>
         </AuthProvider>
       </ErrorBoundary>

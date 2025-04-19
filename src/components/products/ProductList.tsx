@@ -15,17 +15,17 @@ import {
   Alert,
   CircularProgress,
   Typography,
-  Avatar,
-  Dialog,
-  DialogContent,
-  DialogTitle
+  Tooltip
 } from '@mui/material';
-import { Edit, Delete, Add, ZoomIn } from '@mui/icons-material';
+import { Edit, Delete, Add, Search } from '@mui/icons-material';
 import productApi from '../../api/productApi';
 import { Producto, ProductoListRequest } from '../../types/productTypes';
 import ProductForm from './ProductForm';
+import { useAuth } from '../../contexts/AuthContext';
+import ConfirmationDialog from '../shared/ConfirmationDialog';
 
 const ProductList: React.FC = () => {
+  const { user } = useAuth();
   const [products, setProducts] = useState<Producto[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -35,17 +35,9 @@ const ProductList: React.FC = () => {
   const [currentProduct, setCurrentProduct] = useState<Producto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [imageDialogOpen, setImageDialogOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Producto | null>(null);
 
-
-  
-  const handleImageClick = (imageUrl: string) => {
-    setSelectedImage(imageUrl || null);  // Aseguramos que nunca sea undefined
-    setImageDialogOpen(true);
-  };
-  
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
@@ -59,7 +51,6 @@ const ProductList: React.FC = () => {
       
       const response = await productApi.listProducts(request);
       
-      // Acceder a response.data en lugar de response directamente
       if (response.data && response.data.productos) {
         setProducts(response.data.productos);
         setTotalItems(response.data.totalElementos || response.data.productos.length);
@@ -68,7 +59,7 @@ const ProductList: React.FC = () => {
       }
     } catch (err) {
       console.error('Error al cargar productos:', err);
-      setError('Error al cargar productos');
+      setError('Error al cargar productos. Por favor intente nuevamente.');
     } finally {
       setLoading(false);
     }
@@ -97,12 +88,25 @@ const ProductList: React.FC = () => {
     setOpenForm(true);
   };
 
-  const handleDelete = async (product: Producto) => {
+  const handleDeleteClick = (product: Producto) => {
+    setProductToDelete(product);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete) return;
+    
     try {
-      await productApi.deleteProduct(product.nombre);
+      const productId = productToDelete.id_product 
+        ? String(productToDelete.id_product) 
+        : productToDelete.nombre;
+      
+      await productApi.deleteProduct(productId);
       fetchProducts();
+      setDeleteDialogOpen(false);
     } catch (err: any) {
       setError(err.response?.data?.mensaje || 'Error al eliminar el producto');
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -121,6 +125,8 @@ const ProductList: React.FC = () => {
     setPage(0);
     fetchProducts();
   };
+
+  const isAdmin = user?.role === 'ADMINISTRADOR';
 
   return (
     <Box sx={{ p: 3 }}>
@@ -142,26 +148,33 @@ const ProductList: React.FC = () => {
           size="small"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          sx={{ minWidth: 250 }}
+          sx={{ minWidth: 250, flexGrow: 1 }}
+          InputProps={{
+            startAdornment: <Search color="action" sx={{ mr: 1 }} />
+          }}
         />
+
         <Button 
           type="submit"
-          variant="contained"
-          sx={{ minWidth: 180 }}
+          variant="outlined"
+          sx={{ minWidth: 120 }}
         >
           Buscar
         </Button>
-        <Button 
-          variant="contained" 
-          startIcon={<Add />}
-          onClick={() => {
-            setCurrentProduct(null);
-            setOpenForm(true);
-          }}
-          sx={{ minWidth: 180 }}
-        >
-          Nuevo Producto
-        </Button>
+
+        {isAdmin && (
+          <Button 
+            variant="contained" 
+            startIcon={<Add />}
+            onClick={() => {
+              setCurrentProduct(null);
+              setOpenForm(true);
+            }}
+            sx={{ minWidth: 180, ml: 'auto' }}
+          >
+            Nuevo Producto
+          </Button>
+        )}
       </Box>
 
       {error && (
@@ -180,7 +193,13 @@ const ProductList: React.FC = () => {
             No se encontraron productos
           </Typography>
           {searchTerm && (
-            <Button onClick={() => setSearchTerm('')} sx={{ mt: 2 }}>
+            <Button 
+              onClick={() => {
+                setSearchTerm('');
+                setPage(0);
+              }} 
+              sx={{ mt: 2 }}
+            >
               Limpiar búsqueda
             </Button>
           )}
@@ -191,33 +210,43 @@ const ProductList: React.FC = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                 
                   <TableCell>Nombre</TableCell>
                   <TableCell>Descripción</TableCell>
-                  <TableCell>Categoria</TableCell>
-                  <TableCell>Precio</TableCell>
-                  <TableCell>Stock</TableCell>
-                  <TableCell>Acciones</TableCell>
+                  <TableCell>Categoría</TableCell>
+                  <TableCell align="right">Precio</TableCell>
+                  <TableCell align="right">Stock</TableCell>
+                  {isAdmin && <TableCell align="center">Acciones</TableCell>}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {products.map(product => (
                   <TableRow key={product.id_product || product.nombre}>
-                    
                     <TableCell>{product.nombre}</TableCell>
-                    <TableCell>{product.descripcion}</TableCell>
-                    <TableCell>{product.categoria}</TableCell>
-                    <TableCell>${Number(product.precio).toFixed(2)}</TableCell>
-                    <TableCell>{Number(product.cantidad)}</TableCell>
-                    
-                    <TableCell>
-                      <IconButton onClick={() => handleEdit(product)}>
-                        <Edit color="primary" />
-                      </IconButton>
-                      <IconButton onClick={() => handleDelete(product)}>
-                        <Delete color="error" />
-                      </IconButton>
+                    <TableCell sx={{ 
+                      maxWidth: 200,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {product.descripcion}
                     </TableCell>
+                    <TableCell>{product.categoria}</TableCell>
+                    <TableCell align="right">${Number(product.precio).toFixed(2)}</TableCell>
+                    <TableCell align="right">{Number(product.cantidad)}</TableCell>
+                    {isAdmin && (
+                      <TableCell align="center">
+                        <Tooltip title="Editar">
+                          <IconButton onClick={() => handleEdit(product)}>
+                            <Edit color="primary" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Eliminar">
+                          <IconButton onClick={() => handleDeleteClick(product)}>
+                            <Delete color="error" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -231,6 +260,7 @@ const ProductList: React.FC = () => {
             page={page}
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="Productos por página:"
           />
         </>
       )}
@@ -242,7 +272,13 @@ const ProductList: React.FC = () => {
         product={currentProduct} 
       />
 
-     
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Confirmar eliminación"
+        content={`¿Está seguro que desea eliminar el producto "${productToDelete?.nombre}"?`}
+      />
     </Box>
   );
 };

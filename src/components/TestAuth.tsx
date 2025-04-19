@@ -6,7 +6,7 @@ const TestAuth = () => {
 
   const handleAdminLogin = async () => {
     try {
-      await login('admin', 'password'); // Usa credenciales válidas
+      await login('admin', 'password'); // Asegúrate que el backend devuelva rol 'ADMINISTRADOR'
     } catch (error) {
       console.error('Login failed:', error);
     }
@@ -46,12 +46,12 @@ const TestAuth = () => {
         )}
       </div>
 
-      {user && (user.role === 'admin' || user.role === 'superadmin') && (
-        <div style={{ marginTop: '20px', padding: '10px', background: '#e6f7ff' }}>
-          <h3>Panel de Administrador (solo visible para admins)</h3>
-          <p>Este contenido solo debería verse si eres admin/superadmin</p>
-        </div>
-      )}
+      {user && (user.role === 'ADMINISTRADOR') && (
+  <div style={{ marginTop: '20px', padding: '10px', background: '#e6f7ff' }}>
+    <h3>Panel de Administrador (solo visible para admins)</h3>
+    <p>Este contenido solo debería verse si eres administrador</p>
+  </div>
+)}
     </div>
   );
 };

@@ -106,8 +106,15 @@ const RegisterForm: React.FC = () => {
       setError('');
       
       // Verificar primero si el correo ya existe
-      const checkEmailResponse = await api.get<ApiResponse>(
-        `/API/v1/ENCRYPT/usuarioServicio/checkEmail?correo=${encodeURIComponent(data.email)}`
+      const checkEmailResponse = await api.get(
+        `/API/v1/ENCRYPT/usuarioServicio/checkEmail`,
+        {
+          params: { correo: data.email },
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
       );
   
       if (checkEmailResponse.data.codigo !== 0) {

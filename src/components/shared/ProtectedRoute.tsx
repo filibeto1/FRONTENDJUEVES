@@ -1,3 +1,4 @@
+// src/components/shared/ProtectedRoute.tsx
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { CircularProgress } from '@mui/material';
@@ -8,8 +9,13 @@ const LoadingSpinner = () => (
   </div>
 );
 
-const ProtectedRoute = () => { // Eliminamos el parámetro de roles
-  const { isAuthenticated, loading } = useAuth();
+interface ProtectedRouteProps {
+  allowedRoles?: string[];
+  children?: React.ReactNode;
+}
+
+const ProtectedRoute = ({ allowedRoles, children }: ProtectedRouteProps) => {
+  const { isAuthenticated, loading, user } = useAuth();
   const location = useLocation();
 
   if (loading) return <LoadingSpinner />;
@@ -18,8 +24,12 @@ const ProtectedRoute = () => { // Eliminamos el parámetro de roles
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Eliminamos completamente la verificación de roles
-  return <Outlet />;
+  // Verificación de roles si se especifican
+  if (allowedRoles && !allowedRoles.includes(user?.role || '')) {
+    return <Navigate to="/unauthorized" state={{ from: location }} replace />;
+  }
+
+  return children ? <>{children}</> : <Outlet />;
 };
 
 export default ProtectedRoute;

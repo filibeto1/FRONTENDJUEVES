@@ -34,12 +34,13 @@ export interface ProductoDeleteRequest {
   firma: string;
 }
 
+// En productTypes.ts
 export interface ProductoListRequest {
-  nombre?: string;
   pagina: number;
   tamañoPagina: number;
+  nombre?: string;
+  categoria?: string;
 }
-
 export interface ProductoResponse {
   id_product?: number;
   codigo: number;
@@ -64,4 +65,20 @@ export interface ProductoUpdateResponse {
   data: Producto;
   codigo: number;
   mensaje: string;
+}
+// En tus tipos (productTypes.ts), asegúrate de tener:
+export type CategoriaProducto = 
+  | 'Instrumentos de cuerda'
+  | 'Instrumentos de viento'
+  | 'Instrumentos de percusión'
+  | 'Instrumentos electrónicos';
+
+export interface Producto {
+  id_product?: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number | string;
+  cantidad: number | string;
+  categoria: CategoriaProducto;
+  fechaCreacion?: string | Date;
 }

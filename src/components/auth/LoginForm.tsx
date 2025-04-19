@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import saxImage from './sax.jpg';
+import { AuthResponse } from '../../types/authTypes';
 
 interface LoginFormData {
   username: string;
@@ -22,7 +23,8 @@ interface LoginFormData {
 }
 
 const LoginForm = () => {
-  const { login } = useAuth();
+
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
@@ -46,29 +48,50 @@ const LoginForm = () => {
     };
   }, [showProgress, progress]);
 
-  const onSubmit = async (data: LoginFormData) => {
-    try {
-      setLoading(true);
-      setError('');
-      setShowProgress(true);
-      setProgress(0);
+// En tu onSubmit dentro de LoginForm.tsx
+const onSubmit = async (data: LoginFormData) => {
+  try {
+    setLoading(true);
+    setError('');
+    setShowProgress(true);
+    setProgress(0);
 
-      const result = await login(data.username, data.password);
-      
-      if (result.success) {
-        // Esperar a que complete la animación
-        setTimeout(() => {
-          const from = location.state?.from?.pathname || '/dashboard';
-          navigate(from, { replace: true });
-        }, 2500);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
-      setShowProgress(false);
-      setLoading(false);
+    const result = await login(data.username, data.password);
+    
+    if (result.success) {
+      // Animación de progreso
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          const newProgress = prev + 10;
+          if (newProgress >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return newProgress;
+        });
+      }, 200);
     }
-  };
+  } catch (err: any) {
+    setError(err.message);
+    setShowProgress(false);
+    setLoading(false);
+    setProgress(0);
+  }
+};
 
+// Añade este useEffect para manejar la redirección
+useEffect(() => {
+  if (progress === 100) {
+    const timer = setTimeout(() => {
+      // Verifica el estado de autenticación antes de redirigir
+      if (isAuthenticated) {
+        navigate(location.state?.from?.pathname || '/dashboard');
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }
+}, [progress, navigate, location.state?.from?.pathname, isAuthenticated]);
   return (
     <Box
       sx={{

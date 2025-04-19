@@ -1,7 +1,6 @@
-// Tipos de roles disponibles en la aplicación
-export type UserRole = 'superadmin' | 'admin' | 'editor' | 'user' | 'guest';
+// src/utils/roles.ts
+export type UserRole = 'ADMINISTRADOR' | 'USUARIO_NORMAL';
 
-// Interfaz para los permisos de cada rol
 interface RolePermissions {
   canViewDashboard: boolean;
   canManageUsers: boolean;
@@ -10,38 +9,16 @@ interface RolePermissions {
   canAccessAdminPanel: boolean;
 }
 
-// Mapeo de roles a permisos
 export const rolePermissions: Record<UserRole, RolePermissions> = {
-  superadmin: {
+  ADMINISTRADOR: {
     canViewDashboard: true,
     canManageUsers: true,
     canManageContent: true,
     canManageSettings: true,
     canAccessAdminPanel: true,
   },
-  admin: {
+  USUARIO_NORMAL: {
     canViewDashboard: true,
-    canManageUsers: true,
-    canManageContent: true,
-    canManageSettings: false,
-    canAccessAdminPanel: true,
-  },
-  editor: {
-    canViewDashboard: true,
-    canManageUsers: false,
-    canManageContent: true,
-    canManageSettings: false,
-    canAccessAdminPanel: false,
-  },
-  user: {
-    canViewDashboard: true,
-    canManageUsers: false,
-    canManageContent: false,
-    canManageSettings: false,
-    canAccessAdminPanel: false,
-  },
-  guest: {
-    canViewDashboard: false,
     canManageUsers: false,
     canManageContent: false,
     canManageSettings: false,
@@ -49,20 +26,15 @@ export const rolePermissions: Record<UserRole, RolePermissions> = {
   },
 };
 
-// Función para verificar si un rol tiene un permiso específico
 export const hasPermission = (role: UserRole, permission: keyof RolePermissions): boolean => {
   return rolePermissions[role]?.[permission] ?? false;
 };
 
-// Función para obtener todos los permisos de un rol
 export const getRolePermissions = (role: UserRole): RolePermissions => {
-  return rolePermissions[role] || rolePermissions.guest;
+  return rolePermissions[role] || rolePermissions.USUARIO_NORMAL;
 };
 
-// Lista de roles disponibles para selección en formularios
 export const availableRoles: { value: UserRole; label: string }[] = [
-  { value: 'superadmin', label: 'Super Administrador' },
-  { value: 'admin', label: 'Administrador' },
-  { value: 'editor', label: 'Editor' },
-  { value: 'user', label: 'Usuario' },
+  { value: 'ADMINISTRADOR', label: 'Administrador' },
+  { value: 'USUARIO_NORMAL', label: 'Usuario Normal' },
 ];

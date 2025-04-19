@@ -1,10 +1,20 @@
-// src/pages/AdminPanel.tsx
 import React from 'react';
-import { Typography, Box, Alert, Paper } from '@mui/material';
+import { 
+  Typography, 
+  Box, 
+  Alert, 
+  Paper, 
+  Button,
+  Grid 
+} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const AdminPanel: React.FC = () => {
+interface AdminPanelProps {}
+
+const AdminPanel: React.FC<AdminPanelProps> = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   if (!user) {
     return (
@@ -21,32 +31,52 @@ const AdminPanel: React.FC = () => {
       </Typography>
       
       <Alert severity="info" sx={{ mb: 3 }}>
-        Esta área es solo para usuarios con privilegios de administración
+        Bienvenido, {user.username}. Esta área es solo para administradores.
       </Alert>
 
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Información del Usuario
-        </Typography>
-        <Typography variant="body1" paragraph>
-          <strong>Nombre de usuario:</strong> {user.username}
-        </Typography>
-        <Typography variant="body1" paragraph>
-          <strong>Email:</strong> {user.email}
-        </Typography>
-        <Typography variant="body1" paragraph>
-          <strong>Rol:</strong> <span style={{ textTransform: 'capitalize' }}>{user.role}</span>
-        </Typography>
-      </Paper>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
+            <Typography variant="h6" gutterBottom>
+              Información del Usuario
+            </Typography>
+            <Typography variant="body1" paragraph>
+              <strong>Nombre:</strong> {user.username}
+            </Typography>
+            <Typography variant="body1" paragraph>
+              <strong>Rol:</strong> {user.role}
+            </Typography>
+          </Paper>
+        </Grid>
 
-      {user.role === 'admin' && (
-        <Paper elevation={3} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Herramientas de Administración
-          </Typography>
-          {/* Aquí puedes agregar componentes específicos para administradores */}
-        </Paper>
-      )}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
+            <Typography variant="h6" gutterBottom>
+              Acciones Rápidas
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Button 
+                variant="contained" 
+                onClick={() => navigate('/admin/users')}
+              >
+                Gestionar Usuarios
+              </Button>
+              <Button 
+                variant="contained" 
+                onClick={() => navigate('/products/new')}
+              >
+                Crear Nuevo Producto
+              </Button>
+              <Button 
+                variant="outlined" 
+                onClick={() => navigate('/dashboard')}
+              >
+                Volver al Dashboard
+              </Button>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
     </Box>
   );
 };

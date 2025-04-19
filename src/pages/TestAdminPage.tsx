@@ -17,15 +17,16 @@ const TestAdminPage = () => {
     );
   }
 
-  if (user?.role !== 'admin' && user?.role !== 'superadmin') {
-    return (
-      <div>
-        <h2>Acceso restringido</h2>
-        <p>Solo disponible para administradores</p>
-        <p>Tu rol actual es: {user?.role}</p>
-      </div>
-    );
-  }
+// src/pages/TestAdminPage.tsx
+if (user?.role !== 'ADMINISTRADOR') {
+  return (
+    <div>
+      <h2>Acceso restringido</h2>
+      <p>Solo disponible para administradores</p>
+      <p>Tu rol actual es: {user?.role}</p>
+    </div>
+  );
+}
 
   return (
     <div>

@@ -87,6 +87,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ open, onClose, onSubmitSucces
                      product.cantidad || 0,
             categoria: product.categoria || 'Instrumentos de cuerda'
           })
+          
         };
         setFormData(initialData);
       } else {
